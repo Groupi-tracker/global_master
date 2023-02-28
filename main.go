@@ -28,9 +28,11 @@ type Groupe struct {
 	Relations    string   `json:"relations"`
 }
 
-func GetData() (reponse []Groupe) {
-	url := "https://groupietrackers.herokuapp.com/api/artists"
+type R struct {
+	DatesLocations string `json:"datesLocations"`
+}
 
+func GetData(url string) (reponse []Groupe) {
 	res, err := http.Get(url)
 	if err != nil {
 		panic(err)
@@ -50,26 +52,27 @@ func GetData() (reponse []Groupe) {
 	return reponse
 }
 
-func container_artist(s Groupe, img *canvas.Image) *fyne.Container {
-	r, _ := fyne.LoadResourceFromURLString("https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Apple_logo_black.svg/170px-Apple_logo_black.svg.png")
-	logo := canvas.NewImageFromResource(r)
-	logo.FillMode = canvas.ImageFillOriginal
-	btn := widget.NewButton("", func() {
-	})
+func GetDataR(url string) (reponse []R) {
+	res, err := http.Get(url)
+	if err != nil {
+		panic(err)
+	}
+	defer res.Body.Close()
 
-	containers := container.New(
-		layout.NewHBoxLayout(),
-		container.New(layout.NewVBoxLayout(), logo, btn),
-		container.New(layout.NewCenterLayout(),
-			container.New(layout.NewVBoxLayout(), widget.NewLabel(s.Name)),
-		))
-	return containers
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		panic(err)
+	}
+
+	err = json.Unmarshal(body, &reponse)
+	if err != nil {
+		panic(err)
+	}
+
+	return reponse
 }
 
-func img_button(s Groupe, a fyne.App, myWindow fyne.Window) *fyne.Container { // return type
-	//option button
-	btn := widget.NewButton("", func() {
-	})
+func img_button(s Groupe) *fyne.Container { // return type
 	//img button
 	r, _ := fyne.LoadResourceFromURLString(s.Image)
 	img := canvas.NewImageFromResource(r)
@@ -81,16 +84,7 @@ func img_button(s Groupe, a fyne.App, myWindow fyne.Window) *fyne.Container { //
 		layout.NewMaxLayout(),
 		// first use btn color
 		widget.NewCard(s.Name, "", img),
-		// 2nd btn widget
-		btn,
 	)
-	az := container_artist(s, img)
-	btn = widget.NewButton("", func() {
-		myWindow.SetContent(az)
-	})
-	container1.Add(btn)
-	container1.Resize(fyne.NewSize(100, 100))
-	container1.Refresh()
 	// our button is ready
 	return container1
 }
@@ -99,12 +93,12 @@ func tab_to_string(s []string) string {
 	var tmp string
 
 	for i := range s {
-		tmp = fmt.Sprintf("%s\n%s", tmp, s[i])
+		tmp = fmt.Sprintf("%s %s", tmp, s[i])
 	}
 	return tmp
 }
 
-func Bar() fyne.CanvasObject {
+func Bar(scroll *container.Scroll, w fyne.Window, tab []Groupe) *fyne.Container {
 	entry := widget.NewEntry()
 
 	form := &widget.Form{
@@ -116,7 +110,7 @@ func Bar() fyne.CanvasObject {
 	}
 
 	artist := widget.NewButton("Artist", func() {
-		canvas.NewText("Artist", color.Black)
+		w.SetContent(container.NewBorder(Bar(scroll, w, tab), nil, nil, nil, Artist(w, tab, scroll)))
 	})
 	local := widget.NewButton("Localisation", func() {
 		canvas.NewText("Localisation", color.Black)
@@ -124,64 +118,165 @@ func Bar() fyne.CanvasObject {
 	geo := widget.NewButton("Géolocalisation", func() {
 		canvas.NewText("Géolocalisation", color.Black)
 	})
-
-	tmp := container.NewGridWithColumns(2,
+	home := widget.NewButton("home", func() {
+		w.SetContent(container.NewBorder(Bar(scroll, w, tab), nil, nil, nil, Menu(scroll)))
+	})
+	tmp := container.NewGridWithColumns(4,
+		home,
 		artist,
 		local,
 		geo,
 		form,
 	)
+
 	return tmp
 }
 
-func main() {
-	myApp := app.New()
-	tab := GetData()
-	myWindow := myApp.NewWindow("Grid Wrap Layout")
+func Desc_art(s Groupe) *fyne.Container {
+	r, _ := fyne.LoadResourceFromURLString(s.Image)
+	img := canvas.NewImageFromResource(r)
+	img.FillMode = canvas.ImageFillOriginal
 
-	myWindow.Resize(fyne.NewSize(200, 200))
+	label := canvas.NewText(s.Name, color.Black)
+	label.TextSize = 50
 
+	sublabel := canvas.NewText(fmt.Sprintf("%s : %s", "Menbres", tab_to_string(s.Members)), color.Black)
+	sublabel.TextSize = 30
+
+	sublabel1 := canvas.NewText(fmt.Sprintf("%s : %s", "First Album", s.FirstAlbum), color.Black)
+	sublabel1.TextSize = 30
+
+	sublabel2 := canvas.NewText(fmt.Sprintf("%s : %s", "Relation", s.Relations), color.Black)
+	sublabel2.TextSize = 30
+
+	sublabel3 := canvas.NewText(fmt.Sprintf("%s : %s", "Concert Dates", s.ConcertDates), color.Black)
+	sublabel3.TextSize = 30
+
+	sublabel4 := canvas.NewText(fmt.Sprintf("%s : %s", "Creation Date", s.CreationDate), color.Black)
+	sublabel4.TextSize = 30
+
+	containers := container.NewVBox(
+		container.NewGridWithColumns(1,
+			container.New(
+				layout.NewCenterLayout(),
+				label,
+			),
+		),
+		container.NewGridWithColumns(1,
+			img,
+		),
+		layout.NewSpacer(),
+		container.NewGridWithColumns(1,
+			container.New(
+				layout.NewCenterLayout(),
+				sublabel,
+			),
+		),
+		layout.NewSpacer(),
+		container.NewGridWithColumns(1,
+			container.New(
+				layout.NewCenterLayout(),
+				sublabel1,
+			),
+		),
+		layout.NewSpacer(),
+		container.NewGridWithColumns(1,
+			container.New(
+				layout.NewCenterLayout(),
+				sublabel2,
+			),
+		),
+		layout.NewSpacer(),
+		container.NewGridWithColumns(1,
+			container.New(
+				layout.NewCenterLayout(),
+				sublabel3,
+			),
+		),
+		layout.NewSpacer(),
+		container.NewGridWithColumns(1,
+			container.New(
+				layout.NewCenterLayout(),
+				sublabel4,
+			),
+		),
+	)
+	return containers
+}
+
+func Art_mod(s Groupe, w fyne.Window, scroll *container.Scroll, tab []Groupe) *fyne.Container {
+	btn := widget.NewButton("", func() {
+	})
+
+	container1 := container.New(
+		// layout of container
+		layout.NewMaxLayout(),
+		// first use btn color
+		widget.NewCard(s.Name, "", nil),
+		// 2nd btn widget
+		btn,
+	)
+	btn = widget.NewButton("", func() {
+		w.SetContent(container.NewBorder(Bar(scroll, w, tab), nil, nil, nil, Desc_art(s)))
+	})
+	container1.Add(btn)
+	return container1
+}
+
+func Artist(w fyne.Window, tab []Groupe, scroll *container.Scroll) *fyne.Container {
 	grid := container.NewAdaptiveGrid(4)
 
 	for i := range tab {
-		img := img_button(tab[i], myApp, myWindow)
+		img := Art_mod(tab[i], w, scroll, tab)
 		grid.Add(img)
 	}
+	scrol := container.NewHScroll(grid)
+	scrol.Direction = container.ScrollBoth
 
+	return container.NewGridWithColumns(1, scrol)
+}
+
+func Menu(scroll *container.Scroll) *fyne.Container {
 	label := canvas.NewText("Groupi Tracker", color.Black)
 	label.TextSize = 50
 
 	r, _ := fyne.LoadResourceFromURLString("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTQ1CxQj0OZlWftrFpRAs9LiJGL281KBDlMwzlmQ4Q&s")
 	img := canvas.NewImageFromResource(r)
 	img.FillMode = canvas.ImageFillContain
-	img.SetMinSize(fyne.Size{Width: 30, Height: 20})
 
-	scroll := container.NewHScroll(grid)
-	scroll.Direction = container.ScrollBoth
-
-	Box := container.NewVBox(
+	tmp := container.NewVBox(
 		container.NewGridWithRows(1,
 			container.New(
 				layout.NewCenterLayout(),
 				label,
 			),
 		),
-		container.NewGridWithRows(2,
+		container.NewGridWithRows(1,
 			img,
 		),
-		Bar(),
-		container.NewGridWithRows(2,
-			img,
-		),
-		container.NewGridWithColumns(2,
+		container.NewGridWithColumns(1,
 			container.NewGridWrap(
 				fyne.NewSize(1700, 685),
 				scroll,
 			),
 		),
 	)
+	return tmp
+}
 
-	myWindow.SetContent(Box)
-	// myWindow.Resize(fyne.NewSize(180, 75))*/
-	myWindow.ShowAndRun()
+func main() {
+	myApp := app.New()
+	tab := GetData("https://groupietrackers.herokuapp.com/api/artists")
+	w := myApp.NewWindow("Grid Wrap Layout")
+
+	grid := container.NewAdaptiveGrid(4)
+	for i := range tab {
+		img := img_button(tab[i])
+		grid.Add(img)
+	}
+	scroll := container.NewHScroll(grid)
+	scroll.Direction = container.ScrollBoth
+
+	w.SetContent(container.NewBorder(Bar(scroll, w, tab), nil, nil, nil, Menu(scroll)))
+	w.ShowAndRun()
 }
