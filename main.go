@@ -29,7 +29,21 @@ type Groupe struct {
 }
 
 type R struct {
-	DatesLocations string `json:"datesLocations"`
+	DatesLocations map[string][]string `json:"datesLocations"`
+	DatesLocation  string
+}
+
+type RI struct {
+	Index []R `json:"index"`
+}
+
+type L struct {
+	Locations []string `json:"locations"`
+	Location  string
+}
+
+type LI struct {
+	Index []L `json:"index"`
 }
 
 func GetData(url string) (reponse []Groupe) {
@@ -50,6 +64,66 @@ func GetData(url string) (reponse []Groupe) {
 	}
 
 	return reponse
+}
+
+func GetR(url string) (reponse RI) {
+	data, err := http.Get(url)
+	if err != nil {
+		log.Fatal("Error when opening url: ", err)
+	}
+	defer data.Body.Close()
+	err = json.NewDecoder(data.Body).Decode(&reponse)
+	if err != nil {
+		log.Fatal("Error during Decode: ", err)
+	}
+	return reponse
+}
+
+func GetL(url string) (reponse LI) {
+	data, err := http.Get(url)
+	if err != nil {
+		log.Fatal("Error when opening url: ", err)
+	}
+	defer data.Body.Close()
+	err = json.NewDecoder(data.Body).Decode(&reponse)
+	if err != nil {
+		log.Fatal("Error during Decode: ", err)
+	}
+	return reponse
+}
+
+func A(id int) string {
+	var c int
+	var listLocations []string
+	li := GetL("https://groupietrackers.herokuapp.com/api/locations")
+	ri := GetR("https://groupietrackers.herokuapp.com/api/relation")
+
+	var r R
+	contentRelations := ""
+
+	r.DatesLocation = "Relations : "
+	for _, i := range li.Index[id].Locations {
+		for c = 0; c <= len(ri.Index[id].DatesLocations[i])-1; c++ {
+			var isDouble bool = false
+			for _, q := range listLocations {
+				fmt.Println("List : ", q)
+				fmt.Println("Locations : ", i)
+				if q == i {
+					isDouble = true
+				}
+			}
+			if !isDouble {
+				r.DatesLocation += i + " : " + ri.Index[id].DatesLocations[i][c] + "  "
+				listLocations = append(listLocations, i)
+			} else {
+				r.DatesLocation += ", " + ri.Index[id].DatesLocations[i][c] + " "
+			}
+			contentRelations = r.DatesLocation
+		}
+	}
+
+	fmt.Println("nombre : ", c)
+	return contentRelations
 }
 
 func GetDataR(url string) (reponse []R) {
@@ -121,7 +195,7 @@ func Bar(scroll *container.Scroll, w fyne.Window, tab []Groupe) *fyne.Container 
 	home := widget.NewButton("home", func() {
 		w.SetContent(container.NewBorder(Bar(scroll, w, tab), nil, nil, nil, Menu(scroll)))
 	})
-	tmp := container.NewGridWithColumns(4,
+	tmp := container.NewGridWithColumns(5,
 		home,
 		artist,
 		local,
@@ -141,49 +215,42 @@ func Desc_art(s Groupe) *fyne.Container {
 	label.TextSize = 50
 
 	sublabel := canvas.NewText(fmt.Sprintf("%s : %s", "Menbres", tab_to_string(s.Members)), color.Black)
-	sublabel.TextSize = 30
+	sublabel.TextSize = 20
 
 	sublabel1 := canvas.NewText(fmt.Sprintf("%s : %s", "First Album", s.FirstAlbum), color.Black)
 	sublabel1.TextSize = 30
 
-	sublabel2 := canvas.NewText(fmt.Sprintf("%s : %s", "Relation", s.Relations), color.Black)
-	sublabel2.TextSize = 30
+	sublabel3 := canvas.NewText(fmt.Sprintf("%s : %s", "", A(s.ID)), color.Black)
+	sublabel3.TextSize = 15
 
-	sublabel3 := canvas.NewText(fmt.Sprintf("%s : %s", "Concert Dates", s.ConcertDates), color.Black)
-	sublabel3.TextSize = 30
-
-	sublabel4 := canvas.NewText(fmt.Sprintf("%s : %s", "Creation Date", s.CreationDate), color.Black)
+	sublabel4 := canvas.NewText(fmt.Sprintf("%s : %d", "Creation Date", s.CreationDate), color.Black)
 	sublabel4.TextSize = 30
 
+	spacer := layout.NewSpacer()
+
 	containers := container.NewVBox(
-		container.NewGridWithColumns(1,
+		container.NewGridWithColumns(2,
 			container.New(
 				layout.NewCenterLayout(),
 				label,
 			),
-		),
-		container.NewGridWithColumns(1,
 			img,
 		),
-		layout.NewSpacer(),
+		spacer,
 		container.NewGridWithColumns(1,
 			container.New(
 				layout.NewCenterLayout(),
 				sublabel,
 			),
 		),
-		layout.NewSpacer(),
-		container.NewGridWithColumns(1,
+		container.NewGridWithColumns(2,
 			container.New(
 				layout.NewCenterLayout(),
 				sublabel1,
 			),
-		),
-		layout.NewSpacer(),
-		container.NewGridWithColumns(1,
 			container.New(
 				layout.NewCenterLayout(),
-				sublabel2,
+				sublabel4,
 			),
 		),
 		layout.NewSpacer(),
@@ -191,13 +258,6 @@ func Desc_art(s Groupe) *fyne.Container {
 			container.New(
 				layout.NewCenterLayout(),
 				sublabel3,
-			),
-		),
-		layout.NewSpacer(),
-		container.NewGridWithColumns(1,
-			container.New(
-				layout.NewCenterLayout(),
-				sublabel4,
 			),
 		),
 	)
