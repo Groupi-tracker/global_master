@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
@@ -106,8 +107,6 @@ func A(id int) string {
 		for c = 0; c <= len(ri.Index[id].DatesLocations[i])-1; c++ {
 			var isDouble bool = false
 			for _, q := range listLocations {
-				fmt.Println("List : ", q)
-				fmt.Println("Locations : ", i)
 				if q == i {
 					isDouble = true
 				}
@@ -121,8 +120,6 @@ func A(id int) string {
 			contentRelations = r.DatesLocation
 		}
 	}
-
-	fmt.Println("nombre : ", c)
 	return contentRelations
 }
 
@@ -172,6 +169,56 @@ func tab_to_string(s []string) string {
 	return tmp
 }
 
+func SearchBar(s string, tab []Groupe, scroll *container.Scroll, w fyne.Window) *fyne.Container {
+	n := 0
+	for i := range tab {
+		if strings.Compare(s, tab[i].Name) == 0 {
+			n++
+		}
+		if strings.Contains(tab[i].Name, s) == true {
+			n++
+		}
+	}
+
+	var search []Groupe
+	v := 0
+
+	for i := range tab {
+		if strings.Compare(s, tab[i].Name) == 0 {
+			search = append(search, tab[i])
+		}
+		if strings.Contains(tab[i].Name, s) == true {
+			for j := range search {
+				if strings.Compare(search[j].Name, tab[i].Name) == 0 {
+					v = 1
+				}
+			}
+			if v == 0 {
+				fmt.Println(tab[i].Name)
+				search = append(search, tab[i])
+			} else {
+				v = 0
+			}
+		}
+	}
+
+	for i := range search {
+		log.Println(search[i].Name)
+	}
+
+	grid := container.NewAdaptiveGrid(4)
+	for i := range search {
+		img := Art_mod(search[i], w, scroll, search)
+		grid.Add(img)
+	}
+	scrol := container.NewHScroll(grid)
+	scrol.Direction = container.ScrollBoth
+
+	search = nil
+
+	return container.NewGridWithColumns(1, scrol)
+}
+
 func Bar(scroll *container.Scroll, w fyne.Window, tab []Groupe) *fyne.Container {
 	entry := widget.NewEntry()
 
@@ -179,7 +226,7 @@ func Bar(scroll *container.Scroll, w fyne.Window, tab []Groupe) *fyne.Container 
 		Items: []*widget.FormItem{ // we can specify items in the constructor
 			{Text: "Search", Widget: entry}},
 		OnSubmit: func() { // optional, handle form submission
-			log.Println("submit")
+			w.SetContent(container.NewBorder(Bar(scroll, w, tab), nil, nil, nil, SearchBar(entry.Text, tab, scroll, w)))
 		},
 	}
 
@@ -206,6 +253,25 @@ func Bar(scroll *container.Scroll, w fyne.Window, tab []Groupe) *fyne.Container 
 	return tmp
 }
 
+func FormatString(s string) string {
+	if len(s)%20 != 0 {
+		n := 0
+		tmp := make([]rune, len(s)+len(s)%20)
+		for i := range s {
+			if n == 20 {
+				tmp[i] = '\n'
+				n = 0
+			} else {
+				tmp[i] = rune(s[i])
+				n++
+			}
+		}
+		fmt.Println(string(tmp))
+		return string(tmp)
+	}
+	return s
+}
+
 func Desc_art(s Groupe) *fyne.Container {
 	r, _ := fyne.LoadResourceFromURLString(s.Image)
 	img := canvas.NewImageFromResource(r)
@@ -220,7 +286,9 @@ func Desc_art(s Groupe) *fyne.Container {
 	sublabel1 := canvas.NewText(fmt.Sprintf("%s : %s", "First Album", s.FirstAlbum), color.Black)
 	sublabel1.TextSize = 30
 
-	sublabel3 := canvas.NewText(fmt.Sprintf("%s : %s", "", A(s.ID)), color.Black)
+	str := FormatString(A(s.ID))
+
+	sublabel3 := canvas.NewText(fmt.Sprintf("%s : %s", "", str), color.Black)
 	sublabel3.TextSize = 15
 
 	sublabel4 := canvas.NewText(fmt.Sprintf("%s : %d", "Creation Date", s.CreationDate), color.Black)
@@ -229,36 +297,23 @@ func Desc_art(s Groupe) *fyne.Container {
 	spacer := layout.NewSpacer()
 
 	containers := container.NewVBox(
-		container.NewGridWithColumns(2,
-			container.New(
-				layout.NewCenterLayout(),
-				label,
-			),
+		container.NewGridWithColumns(1,
+			label,
+		),
+		container.NewGridWithColumns(1,
 			img,
 		),
 		spacer,
 		container.NewGridWithColumns(1,
-			container.New(
-				layout.NewCenterLayout(),
-				sublabel,
-			),
+			sublabel,
 		),
 		container.NewGridWithColumns(2,
-			container.New(
-				layout.NewCenterLayout(),
-				sublabel1,
-			),
-			container.New(
-				layout.NewCenterLayout(),
-				sublabel4,
-			),
+			sublabel1,
+			sublabel4,
 		),
 		layout.NewSpacer(),
 		container.NewGridWithColumns(1,
-			container.New(
-				layout.NewCenterLayout(),
-				sublabel3,
-			),
+			sublabel3,
 		),
 	)
 	return containers
