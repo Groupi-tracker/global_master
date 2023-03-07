@@ -101,6 +101,71 @@ func FormatString(s string) ([]string, []string) {
 	return maps, date
 }
 
+func FormatStringGeo(s string) ([]string, []string) {
+	var res []string
+	var tmp string
+
+	j := 0
+	n := 0
+
+	for _, i := range s {
+		if ((rune(i) >= 'a' && rune(i) <= 'z') || (rune(i) >= 'A' && rune(i) <= 'Z')) && rune(i) != ' ' && rune(i) != '-' {
+			j++
+		}
+		if rune(i) == ':' {
+			n++
+		}
+		if n == 2 {
+			break
+		}
+	}
+	for i := j; i != len(s); i++ {
+		if (s[i] < 'a' || s[i] > 'z') && (s[i] < 'A' || s[i] > 'Z') && s[i] != ':' {
+			tmp += string(s[i])
+		} else {
+			res = append(res, tmp)
+			tmp = ""
+		}
+	}
+	res = append(res, tmp)
+	var date []string
+	for _, i := range res {
+		if i != "" {
+			if len(i) > 2 {
+				date = append(date, i)
+			}
+		}
+	}
+
+	res = nil
+	tmp = ""
+	var tmpMaps []string
+	var maps []string
+	for _, i := range s {
+		if (i >= 'a' && i <= 'z') || (i >= 'A' && i <= 'Z') || (i == '-' || i == '_') {
+			tmp += string(i)
+		} else {
+			if tmp != "" {
+				if tmp[0] != '-' {
+					res = append(res, tmp)
+				}
+			}
+			tmp = ""
+		}
+	}
+	for i := range res {
+		if res[i] != "" {
+			tmpMaps = append(tmpMaps, res[i])
+		}
+	}
+	for i := 1; i < len(tmpMaps); i++ {
+		s1, _ := SepString(tmpMaps[i])
+		maps = append(maps, s1)
+	}
+
+	return maps, date
+}
+
 func SepString(s string) (string, string) {
 	var tmp1 string
 	var tmp2 string
